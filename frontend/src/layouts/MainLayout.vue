@@ -80,13 +80,32 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const activeMenu = computed(() => {
-  return route.name === 'BookDetail' || route.name === 'BookEdit' || route.name === 'BookAdd'
-    ? 'books'
-    : route.name?.toLowerCase().replace(/-/g, '-') || 'books'
+  // 将路由名称转换为菜单index格式
+  const routeName = route.name
+  if (routeName === 'BookDetail' || routeName === 'BookEdit' || routeName === 'BookAdd') {
+    return 'books'
+  }
+  if (routeName === 'MyBorrows') return 'my-borrows'
+  if (routeName === 'AllBorrows') return 'all-borrows'
+  if (routeName === 'BookAdd') return 'book-add'
+  if (routeName === 'Books') return 'books'
+  return 'books'
 })
 
 const handleMenuSelect = (key) => {
-  router.push({ name: key })
+  // 将菜单index转换为路由名称
+  const routeNameMap = {
+    'books': 'Books',
+    'my-borrows': 'MyBorrows',
+    'all-borrows': 'AllBorrows',
+    'book-add': 'BookAdd'
+  }
+  const routeName = routeNameMap[key]
+  if (routeName) {
+    router.push({ name: routeName })
+  } else {
+    console.error('Unknown menu key:', key)
+  }
 }
 
 const handleCommand = (command) => {
