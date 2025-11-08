@@ -50,16 +50,46 @@ book-manage/
 
 ## 安装和运行
 
-### 1. 前置要求
+### 快速启动（推荐）
+
+使用 Makefile 一键启动所有服务：
+
+```bash
+# 启动所有服务（会自动检查端口、安装依赖、启动服务）
+make start
+
+# 停止所有服务
+make stop
+
+# 查看服务状态
+make status
+
+# 查看帮助
+make help
+```
+
+更多 Makefile 命令请参考 [.makefile-help.md](.makefile-help.md)
+
+### 手动启动
+
+#### 1. 前置要求
 
 - Go 1.21 或更高版本
+- Node.js 16+ 和 npm
 - MySQL 5.7 或更高版本
 - 已导入数据库脚本（data.sql）
 
-### 2. 安装依赖
+#### 2. 安装后端依赖
 
 ```bash
 go mod tidy
+```
+
+#### 3. 安装前端依赖
+
+```bash
+cd frontend
+npm install
 ```
 
 ### 3. 配置数据库
@@ -100,13 +130,26 @@ admin_emails:
   - "admin@lib.com"
 ```
 
-### 4. 运行服务
+#### 4. 运行后端服务
 
 ```bash
 go run main.go
+# 或
+make dev-backend
 ```
 
-服务默认运行在 `http://localhost:8080`
+后端服务默认运行在 `http://localhost:8080`
+
+#### 5. 运行前端服务
+
+```bash
+cd frontend
+npm run dev
+# 或
+make dev-frontend
+```
+
+前端服务默认运行在 `http://localhost:3000`
 
 ## API 接口
 
