@@ -153,8 +153,24 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// 生成token
-	token, err := utils.GenerateToken(user.ID, user.Email, user.Role)
+	// 确定用户角色（优先检查邮箱白名单，再检查数据库role字段）
+	adminService := services.GetAdminService()
+	userRole := "user"
+	if adminService != nil {
+		role, err := adminService.GetUserRole(user.Email)
+		if err == nil {
+			userRole = role
+		} else {
+			// 如果获取角色失败，使用数据库中的role字段
+			userRole = user.Role
+		}
+	} else {
+		// 如果adminService未初始化，使用数据库中的role字段
+		userRole = user.Role
+	}
+
+	// 生成token（使用确定的角色）
+	token, err := utils.GenerateToken(user.ID, user.Email, userRole)
 	if err != nil {
 		utils.Error(c, 10001, "生成token失败")
 		return
@@ -164,7 +180,7 @@ func Login(c *gin.Context) {
 		"user_info": map[string]interface{}{
 			"id":            user.ID,
 			"email":         user.Email,
-			"role":          user.Role,
+			"role":          userRole,
 			"register_time": user.RegisterTime.Format("2006-01-02 15:04:05"),
 			"status":        user.Status,
 		},

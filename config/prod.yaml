@@ -1,0 +1,25 @@
+# 生产环境配置
+database:
+  host: "localhost"
+  port: "3306"
+  user: "root"
+  password: "123456"
+  database: "library_management"
+
+server:
+  port: "8080"
+
+jwt:
+  secret: "book-manage-secret-key-2025"
+
+email:
+  # 邮箱配置（当前版本使用内存存储验证码）
+  smtp_host: ""
+  smtp_port: ""
+  smtp_user: ""
+  smtp_password: ""
+
+# 管理员邮箱白名单（优先判断）
+admin_emails:
+  - "824955445@qq.com"
+  - "admin@lib.com"

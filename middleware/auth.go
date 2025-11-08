@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"book-manage/config"
+	"book-manage/services"
 	"book-manage/utils"
 	"bytes"
 	"io"
@@ -11,6 +13,12 @@ import (
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var cfg *config.Config
+
+// InitMiddleware 初始化中间件（传入配置）
+func InitMiddleware(config *config.Config) {
+	cfg = config
+}
 
 // AuthMiddleware 认证中间件
 func AuthMiddleware() gin.HandlerFunc {
@@ -73,14 +81,44 @@ func AuthMiddleware() gin.HandlerFunc {
 }
 
 // AdminMiddleware 管理员权限中间件
+// 判断逻辑：1. 优先检查邮箱白名单 2. 检查JWT token中的role字段 3. 检查数据库role字段
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		role, exists := c.Get("user_role")
-		if !exists || role != "admin" {
+		userEmail, exists := c.Get("user_email")
+		if !exists {
 			utils.Error(c, 10009, "权限不足")
 			c.Abort()
 			return
 		}
-		c.Next()
+
+		email := userEmail.(string)
+
+		// 优先检查邮箱白名单
+		if cfg != nil && cfg.IsAdminEmail(email) {
+			c.Next()
+			return
+		}
+
+		// 检查JWT token中的role字段
+		role, exists := c.Get("user_role")
+		if exists && role == "admin" {
+			c.Next()
+			return
+		}
+
+		// 最后检查数据库role字段
+		adminService := services.GetAdminService()
+		if adminService != nil {
+			isAdmin, err := adminService.IsAdmin(email)
+			if err == nil && isAdmin {
+				// 更新上下文中的角色
+				c.Set("user_role", "admin")
+				c.Next()
+				return
+			}
+		}
+
+		utils.Error(c, 10009, "权限不足")
+		c.Abort()
 	}
 }

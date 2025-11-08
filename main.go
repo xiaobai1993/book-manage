@@ -5,6 +5,7 @@ import (
 	"book-manage/database"
 	"book-manage/handlers"
 	"book-manage/middleware"
+	"book-manage/services"
 	"book-manage/utils"
 	"fmt"
 	"log"
@@ -14,7 +15,10 @@ import (
 
 func main() {
 	// 加载配置
-	cfg := config.LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
 
 	// 设置JWT密钥
 	utils.SetJWTSecret(cfg.JWT.Secret)
@@ -23,6 +27,12 @@ func main() {
 	if err := database.InitDB(cfg); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
+
+	// 初始化管理员服务
+	services.InitAdminService(cfg)
+
+	// 初始化中间件（传入配置）
+	middleware.InitMiddleware(cfg)
 
 	// 创建Gin路由
 	r := gin.Default()

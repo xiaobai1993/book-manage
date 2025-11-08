@@ -64,16 +64,40 @@ go mod tidy
 
 ### 3. 配置数据库
 
-编辑 `config/config.go` 文件，修改数据库连接信息（默认已配置为 localhost:3306，用户名 root，密码 123456）：
+项目使用YAML配置文件，支持三个环境：`env`、`dev`、`prod`。
 
-```go
-Database: DatabaseConfig{
-    Host:     "localhost",
-    Port:     "3306",
-    User:     "root",
-    Password: "123456",
-    Database: "library_management",
-}
+**默认使用 `env` 环境**，配置文件位于 `config/env.yaml`。
+
+通过环境变量 `APP_ENV` 指定使用的环境：
+```bash
+# 使用env环境（默认）
+export APP_ENV=env
+
+# 使用dev环境
+export APP_ENV=dev
+
+# 使用prod环境
+export APP_ENV=prod
+```
+
+编辑对应环境的YAML配置文件（如 `config/env.yaml`），修改数据库连接信息：
+
+```yaml
+database:
+  host: "localhost"
+  port: "3306"
+  user: "root"
+  password: "123456"
+  database: "library_management"
+```
+
+**管理员邮箱配置**：
+在YAML配置文件的 `admin_emails` 列表中添加管理员邮箱，系统会优先检查邮箱白名单判断用户是否为管理员：
+
+```yaml
+admin_emails:
+  - "824955445@qq.com"
+  - "admin@lib.com"
 ```
 
 ### 4. 运行服务
@@ -151,6 +175,23 @@ go run main.go
   - 密码: `12345678`
 
 > **注意**: 实际密码请参考数据库中的 bcrypt 哈希值。如果需要测试，请先使用注册功能创建新用户。
+
+## 管理员权限判断
+
+系统采用**三级判断机制**来确定用户是否为管理员：
+
+1. **优先检查邮箱白名单**：如果用户邮箱在YAML配置文件的 `admin_emails` 列表中，直接认定为管理员
+2. **检查JWT Token中的role字段**：登录时会将确定的角色写入JWT token
+3. **检查数据库role字段**：如果不在白名单中，检查数据库中用户的 `role` 字段是否为 `admin`
+
+**当前配置的管理员邮箱**：
+- `824955445@qq.com`（已配置在YAML文件中）
+- `admin@lib.com`（已配置在YAML文件中）
+
+**注意事项**：
+- 邮箱匹配不区分大小写
+- 管理员邮箱配置修改后，需要重启服务生效
+- 邮箱白名单优先级最高，即使数据库中的role为user，只要在白名单中也会被认定为管理员
 
 ## 邮箱验证码
 
