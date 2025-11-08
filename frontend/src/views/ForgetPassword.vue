@@ -164,7 +164,13 @@ const handleForgetPassword = async () => {
     if (valid) {
       loading.value = true
       try {
-        await forgetPassword(forgetPasswordForm)
+        // 转换字段名为后端期望的格式
+        await forgetPassword({
+          email: forgetPasswordForm.email,
+          code: forgetPasswordForm.code,
+          new_password: forgetPasswordForm.newPassword,
+          confirm_new_password: forgetPasswordForm.confirmNewPassword
+        })
         ElMessage.success('密码重置成功，请登录')
         router.push('/login')
       } catch (error) {

@@ -164,7 +164,13 @@ const handleRegister = async () => {
     if (valid) {
       loading.value = true
       try {
-        await register(registerForm)
+        // 转换字段名为后端期望的格式
+        await register({
+          email: registerForm.email,
+          password: registerForm.password,
+          confirm_password: registerForm.confirmPassword,
+          code: registerForm.code
+        })
         ElMessage.success('注册成功，请登录')
         router.push('/login')
       } catch (error) {
