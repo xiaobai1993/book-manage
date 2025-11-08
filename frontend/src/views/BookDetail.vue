@@ -77,9 +77,17 @@ const book = ref(null)
 const loadBookDetail = async () => {
   loading.value = true
   try {
+    // 将路由参数转换为整数
+    const bookId = parseInt(route.params.id, 10)
+    if (isNaN(bookId)) {
+      ElMessage.error('无效的图书ID')
+      router.push({ name: 'Books' })
+      return
+    }
+    
     const res = await getBookDetail({
       token: userStore.token,
-      id: route.params.id
+      id: bookId
     })
     book.value = res.data.book
   } catch (error) {
