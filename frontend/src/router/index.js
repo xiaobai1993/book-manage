@@ -63,6 +63,12 @@ const routes = [
         meta: { requiresAuth: true, requiresAdmin: true }
       },
       {
+        path: 'email-code-records',
+        name: 'EmailCodeRecords',
+        component: () => import('@/views/EmailCodeRecords.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true }
+      },
+      {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/Profile.vue'),

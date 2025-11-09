@@ -2,6 +2,8 @@ package services
 
 import (
 	"book-manage/config"
+	"book-manage/database"
+	"book-manage/models"
 	"crypto/tls"
 	"fmt"
 	"math/rand"
@@ -67,11 +69,28 @@ func (s *EmailService) SendCode(email, action string) (string, error) {
 	}
 
 	code := s.GenerateCode()
+	expiresAt := time.Now().Add(30 * time.Minute)
+	
+	// 保存到内存缓存（用于快速验证）
 	s.codes[key] = &EmailCode{
 		Code:      code,
 		Email:     email,
 		Action:    action,
-		ExpiresAt: time.Now().Add(30 * time.Minute),
+		ExpiresAt: expiresAt,
+	}
+
+	// 保存到数据库（用于管理员查看）
+	db := database.GetDB()
+	codeRecord := models.EmailCodeRecord{
+		Email:     email,
+		Code:      code,
+		Action:    action,
+		ExpiresAt: expiresAt,
+		IsUsed:    false,
+	}
+	if err := db.Create(&codeRecord).Error; err != nil {
+		// 数据库保存失败不影响验证码生成，只记录错误
+		fmt.Printf("[Email Service] 保存验证码到数据库失败: %v\n", err)
 	}
 
 	// 立即打印验证码（用于调试）
@@ -417,28 +436,61 @@ func (s *EmailService) sendEmailSTARTTLS(host, port, username, password, from st
 
 // VerifyCode 验证验证码
 func (s *EmailService) VerifyCode(email, action, code string) bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	key := fmt.Sprintf("%s:%s", email, action)
 	storedCode, exists := s.codes[key]
-	if !exists {
+	
+	// 先从内存缓存验证
+	if exists {
+		// 检查是否过期
+		if time.Now().After(storedCode.ExpiresAt) {
+			delete(s.codes, key)
+			return false
+		}
+
+		// 验证码正确后删除内存缓存
+		if storedCode.Code == code {
+			delete(s.codes, key)
+			
+			// 更新数据库记录为已使用
+			db := database.GetDB()
+			now := time.Now()
+			db.Model(&models.EmailCodeRecord{}).
+				Where("email = ? AND code = ? AND action = ? AND is_used = ?", email, code, action, false).
+				Updates(map[string]interface{}{
+					"is_used": true,
+					"used_at": &now,
+				})
+			
+			return true
+		}
+	}
+
+	// 如果内存缓存中没有，尝试从数据库验证（兼容性）
+	db := database.GetDB()
+	var codeRecord models.EmailCodeRecord
+	err := db.Where("email = ? AND code = ? AND action = ? AND is_used = ?", email, code, action, false).
+		First(&codeRecord).Error
+	
+	if err != nil {
 		return false
 	}
 
 	// 检查是否过期
-	if time.Now().After(storedCode.ExpiresAt) {
-		delete(s.codes, key)
+	if time.Now().After(codeRecord.ExpiresAt) {
 		return false
 	}
 
-	// 验证码正确后删除
-	if storedCode.Code == code {
-		delete(s.codes, key)
-		return true
-	}
+	// 标记为已使用
+	now := time.Now()
+	db.Model(&codeRecord).Updates(map[string]interface{}{
+		"is_used": true,
+		"used_at": &now,
+	})
 
-	return false
+	return true
 }
 
 // cleanupExpiredCodes 清理过期的验证码

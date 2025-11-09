@@ -2,6 +2,7 @@ package database
 
 import (
 	"book-manage/config"
+	"book-manage/models"
 	"database/sql"
 	"fmt"
 	"log"
@@ -76,18 +77,37 @@ func InitDB(cfg *config.Config) error {
 				sslmode = "require"
 			}
 			// 统一使用 URL 格式构建连接字符串
-			// 添加 prefer_simple_protocol=1 来避免 prepared statement 冲突
-			dsn = fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=%s&TimeZone=Asia/Shanghai&prefer_simple_protocol=1",
-				cfg.Database.User,
-				cfg.Database.Password,
-				cfg.Database.Host,
-				cfg.Database.Port,
-				cfg.Database.Database,
-				sslmode,
-			)
+			// 注意：prefer_simple_protocol 参数仅在 PostgreSQL 14+ 支持
+			// 对于 PostgreSQL 12 及以下版本，不添加此参数
+			// 本地开发环境通常使用 PostgreSQL 12，生产环境（Supabase）使用 PostgreSQL 14+
+			isLocalPostgres := cfg.Database.Host == "localhost" || cfg.Database.Host == "127.0.0.1"
+			if isLocalPostgres {
+				// 本地环境：不添加 prefer_simple_protocol（兼容 PostgreSQL 12）
+				dsn = fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=%s&TimeZone=Asia/Shanghai",
+					cfg.Database.User,
+					cfg.Database.Password,
+					cfg.Database.Host,
+					cfg.Database.Port,
+					cfg.Database.Database,
+					sslmode,
+				)
+			} else {
+				// 生产环境（Supabase等）：添加 prefer_simple_protocol（PostgreSQL 14+）
+				dsn = fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=%s&TimeZone=Asia/Shanghai&prefer_simple_protocol=1",
+					cfg.Database.User,
+					cfg.Database.Password,
+					cfg.Database.Host,
+					cfg.Database.Port,
+					cfg.Database.Database,
+					sslmode,
+				)
+			}
 		}
+		// 禁用 prepared statement 以避免 "prepared statement already exists" 错误
+		// 这在连接池环境中特别重要，因为连接会被重用
 		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Info),
+			Logger:      logger.Default.LogMode(logger.Info),
+			PrepareStmt: false, // 禁用 prepared statement，避免缓存冲突
 		})
 	case "mysql":
 		fallthrough
@@ -126,8 +146,34 @@ func InitDB(cfg *config.Config) error {
 		return fmt.Errorf("failed to ping database: %v", err)
 	}
 
+	// 自动迁移数据库表
+	if err := autoMigrate(); err != nil {
+		log.Printf("Warning: Auto migration failed: %v", err)
+		// 不阻止启动，因为可能已经手动创建了表
+	}
+
 	log.Printf("Database connection established successfully (type: %s)", dbType)
 	log.Printf("Connection pool: MaxOpen=%d, MaxIdle=%d", sqlDB.Stats().MaxOpenConnections, sqlDB.Stats().MaxIdleClosed)
+	return nil
+}
+
+// autoMigrate 自动迁移数据库表
+func autoMigrate() error {
+	if DB == nil {
+		return fmt.Errorf("database connection not initialized")
+	}
+
+	// 执行自动迁移（使用models包中的模型）
+	if err := DB.AutoMigrate(
+		&models.User{},
+		&models.Book{},
+		&models.BorrowRecord{},
+		&models.EmailCodeRecord{},
+	); err != nil {
+		return fmt.Errorf("auto migration failed: %v", err)
+	}
+
+	log.Printf("Database tables auto-migrated successfully")
 	return nil
 }
 

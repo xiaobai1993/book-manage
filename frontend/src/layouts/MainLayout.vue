@@ -24,6 +24,10 @@
             <el-icon><List /></el-icon>
             <span>全部借阅记录</span>
           </el-menu-item>
+          <el-menu-item v-if="userStore.isAdmin" index="email-code-records">
+            <el-icon><Message /></el-icon>
+            <span>验证码记录</span>
+          </el-menu-item>
           <el-menu-item v-if="userStore.isAdmin" index="book-add">
             <el-icon><Plus /></el-icon>
             <span>添加图书</span>
@@ -72,7 +76,8 @@ import {
   User,
   ArrowDown,
   Setting,
-  SwitchButton
+  SwitchButton,
+  Message
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -87,6 +92,7 @@ const activeMenu = computed(() => {
   }
   if (routeName === 'MyBorrows') return 'my-borrows'
   if (routeName === 'AllBorrows') return 'all-borrows'
+  if (routeName === 'EmailCodeRecords') return 'email-code-records'
   if (routeName === 'BookAdd') return 'book-add'
   if (routeName === 'Books') return 'books'
   return 'books'
@@ -98,6 +104,7 @@ const handleMenuSelect = (key) => {
     'books': 'Books',
     'my-borrows': 'MyBorrows',
     'all-borrows': 'AllBorrows',
+    'email-code-records': 'EmailCodeRecords',
     'book-add': 'BookAdd'
   }
   const routeName = routeNameMap[key]

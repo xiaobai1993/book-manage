@@ -96,6 +96,15 @@ func main() {
 		borrowAdminGroup.POST("/allRecords", handlers.AllRecords)
 	}
 
+	// 管理员模块（需要管理员权限）
+	adminGroup := r.Group("/api/admin")
+	adminGroup.Use(middleware.AuthMiddleware())
+	adminGroup.Use(middleware.AdminMiddleware())
+	{
+		adminGroup.POST("/emailCodeList", handlers.EmailCodeList)
+		adminGroup.POST("/emailCodeStats", handlers.EmailCodeStats)
+	}
+
 	// 启动服务器
 	port := cfg.Server.Port
 	if port == "" {

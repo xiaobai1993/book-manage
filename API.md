@@ -4,7 +4,7 @@
 - **API版本**：v1.0
 - **文档版本**：v1.0
 - **创建日期**：2025年11月8日
-- **最后更新**：2025年11月8日
+- **最后更新**：2025年11月9日
 
 ## 2. 通用规范
 
@@ -68,6 +68,18 @@
 | due_date | string | 应还日期 |
 | return_date | string | 实际归还日期（未归还可以为null） |
 | status | string | 借阅状态（borrowed/returned） |
+
+#### 验证码记录结构（Email Code Record）
+| 字段 | 类型 | 含义 |
+|------|------|------|
+| id | int | 记录ID |
+| email | string | 接收验证码的邮箱 |
+| code | string | 验证码（6位数字） |
+| action | string | 用途（register: 注册, forget: 忘记密码） |
+| created_at | string | 创建时间 |
+| expires_at | string | 过期时间（创建后30分钟） |
+| is_used | bool | 是否已使用 |
+| used_at | string | 使用时间（未使用为null） |
 
 ### 2.4 业务错误码定义
 
@@ -794,14 +806,117 @@ POST /api/borrow/allRecords
 }
 ```
 
-## 6. 业务规则与约束
+## 6. 管理员模块
 
-### 6.1 借阅规则
+### 6.1 获取验证码记录列表
+- **接口地址**：`/api/admin/emailCodeList`
+- **请求方法**：`POST`
+- **权限校验**：需要管理员权限
+
+#### 请求参数
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| token | string | 是 | 登录凭证 |
+| page | int | 是 | 页码（≥1） |
+| limit | int | 是 | 每页数量（1-100） |
+| email | string | 否 | 按邮箱筛选 |
+| action | string | 否 | 按用途筛选（register/forget） |
+| is_used | bool | 否 | 按使用状态筛选（true: 已使用, false: 未使用） |
+| keyword | string | 否 | 关键词搜索（邮箱或验证码） |
+
+#### 响应参数
+| 参数名 | 类型 | 说明 |
+|--------|------|------|
+| total | int | 总记录数 |
+| list | array | 验证码记录列表 |
+
+#### 示例请求
+```
+POST /api/admin/emailCodeList
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "page": 1,
+  "limit": 20,
+  "action": "register",
+  "is_used": false
+}
+```
+
+#### 示例响应
+```
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "total": 10,
+    "list": [
+      {
+        "id": 1,
+        "email": "user@example.com",
+        "code": "123456",
+        "action": "register",
+        "created_at": "2025-11-09 10:00:00",
+        "expires_at": "2025-11-09 10:30:00",
+        "is_used": false,
+        "used_at": null
+      }
+    ]
+  }
+}
+```
+
+### 6.2 获取验证码统计信息
+- **接口地址**：`/api/admin/emailCodeStats`
+- **请求方法**：`POST`
+- **权限校验**：需要管理员权限
+
+#### 请求参数
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| token | string | 是 | 登录凭证 |
+
+#### 响应参数
+| 参数名 | 类型 | 说明 |
+|--------|------|------|
+| total_count | int | 总验证码数 |
+| used_count | int | 已使用数量 |
+| unused_count | int | 未使用数量 |
+| expired_count | int | 已过期数量（未使用且已过期） |
+| register_count | int | 注册验证码数量 |
+| forget_count | int | 忘记密码验证码数量 |
+
+#### 示例请求
+```
+POST /api/admin/emailCodeStats
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+#### 示例响应
+```
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "total_count": 100,
+    "used_count": 75,
+    "unused_count": 25,
+    "expired_count": 15,
+    "register_count": 60,
+    "forget_count": 40
+  }
+}
+```
+
+## 7. 业务规则与约束
+
+### 7.1 借阅规则
 - 普通用户单次最多借阅5本图书
 - 每本图书借阅期限为30天（当前版本仅记录应还日期，无逾期罚款机制）
 - 暂不支持图书预约功能
 
-### 6.2 权限规则
+### 7.2 权限规则
 | 功能模块               | 普通用户 | 管理员 |
 | ---------------------- | -------- | ------ |
 | 注册/登录/密码找回     | √        | √      |
@@ -811,14 +926,17 @@ POST /api/borrow/allRecords
 | 借还书操作             | √        | √      |
 | 个人借阅记录查询       | √        | √      |
 | 全量借阅记录查询       | ×        | √      |
+| 验证码记录查询         | ×        | √      |
 
-### 6.3 数据约束
+### 7.3 数据约束
 - 用户邮箱：需符合标准邮箱格式，且在系统内唯一
 - 用户密码：长度≥8位，存储时需通过bcrypt算法加密
 - 图书ISBN：系统内唯一，需符合ISBN编码规则
 - 图书数量：总数量、可借数量均为非负整数
+- 验证码：6位数字，有效期30分钟，每分钟最多重发1次
+- 验证码记录：所有验证码记录永久保存到数据库，仅管理员可查看
 
-## 7. 完整API接口列表
+## 8. 完整API接口列表
 
 | 接口名称 | 接口地址 | 权限要求 | 功能模块 |
 |----------|----------|----------|----------|
@@ -838,3 +956,5 @@ POST /api/borrow/allRecords
 | 还书 | `/api/borrow/return` | 需要登录 | 借阅管理 |
 | 获取个人借阅记录 | `/api/borrow/records` | 需要登录 | 借阅管理 |
 | 获取全量借阅记录 | `/api/borrow/allRecords` | 需要管理员权限 | 借阅管理 |
+| 获取验证码记录列表 | `/api/admin/emailCodeList` | 需要管理员权限 | 管理员模块 |
+| 获取验证码统计信息 | `/api/admin/emailCodeStats` | 需要管理员权限 | 管理员模块 |
