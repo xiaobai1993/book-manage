@@ -1,0 +1,26 @@
+# PostgreSQL 本地测试配置示例
+# 如果你想在本地测试 PostgreSQL，可以复制这个文件为 env.yaml 或创建新的配置文件
+# 注意：需要先安装并启动 PostgreSQL 数据库
+
+database:
+  host: "localhost"
+  port: "5432"  # PostgreSQL 默认端口
+  user: "postgres"
+  password: "your-postgres-password"
+  database: "library_management"
+
+server:
+  port: "8080"
+
+jwt:
+  secret: "book-manage-secret-key-2025"
+
+email:
+  smtp_host: "smtp.qq.com"
+  smtp_port: "465"
+  smtp_user: "824955445@qq.com"
+  smtp_password: "imtywzhualakbeei"
+
+admin_emails:
+  - "admin@lib.com"
+

@@ -3,8 +3,19 @@ import { ElMessage } from 'element-plus'
 import router from '@/router'
 import { useUserStore } from '@/stores/user'
 
+// 根据环境变量设置 API 基础地址
+// 开发环境使用代理，生产环境使用实际的后端地址
+const getBaseURL = () => {
+  // 如果设置了 VITE_API_BASE_URL，使用它（生产环境）
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL
+  }
+  // 开发环境使用代理
+  return '/api'
+}
+
 const service = axios.create({
-  baseURL: '/api',
+  baseURL: getBaseURL(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'

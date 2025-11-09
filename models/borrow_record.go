@@ -14,7 +14,7 @@ type BorrowRecord struct {
 	BorrowDate time.Time  `gorm:"column:borrow_date;default:CURRENT_TIMESTAMP" json:"borrow_date"`
 	DueDate    time.Time  `gorm:"column:due_date;not null" json:"due_date"`
 	ReturnDate *time.Time `gorm:"column:return_date" json:"return_date"`
-	Status     string     `gorm:"type:enum('borrowed','returned');default:'borrowed';index" json:"status"`
+	Status     string     `gorm:"type:varchar(10);default:'borrowed';check:status IN ('borrowed','returned');index" json:"status"`
 }
 
 // TableName 指定表名

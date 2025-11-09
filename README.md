@@ -16,7 +16,7 @@
 - **语言**: Go 1.21+
 - **Web框架**: Gin
 - **ORM**: GORM
-- **数据库**: MySQL
+- **数据库**: PostgreSQL
 - **认证**: JWT
 - **密码加密**: bcrypt
 
@@ -76,8 +76,8 @@ make help
 
 - Go 1.21 或更高版本
 - Node.js 16+ 和 npm
-- MySQL 5.7 或更高版本
-- 已导入数据库脚本（data.sql）
+- PostgreSQL 12 或更高版本
+- 已导入数据库脚本（data_postgresql.sql）
 
 #### 2. 安装后端依赖
 
@@ -115,9 +115,9 @@ export APP_ENV=prod
 ```yaml
 database:
   host: "localhost"
-  port: "3306"
-  user: "root"
-  password: "123456"
+  port: "5432"
+  user: "postgres"
+  password: "postgres"
   database: "library_management"
 ```
 
