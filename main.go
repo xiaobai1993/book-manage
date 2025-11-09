@@ -31,6 +31,9 @@ func main() {
 	// 初始化管理员服务
 	services.InitAdminService(cfg)
 
+	// 初始化邮件服务
+	services.InitEmailService(&cfg.Email)
+
 	// 初始化中间件（传入配置）
 	middleware.InitMiddleware(cfg)
 
