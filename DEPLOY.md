@@ -37,10 +37,20 @@
 
 ### 1.3 获取数据库连接信息
 
+**重要**：Supabase 推荐使用 **Connection Pooling** 连接字符串，而不是直接连接。
+
 1. 在 Supabase Dashboard 中，点击左侧菜单的 **Settings** → **Database**
-2. 找到 **Connection string** 部分
-3. 选择 **URI** 格式，复制连接字符串（格式类似：`postgresql://postgres:[YOUR-PASSWORD]@db.xxx.supabase.co:5432/postgres`）
-4. **保存这个连接字符串**，后续在 Render 中会用到
+2. 找到 **Connection Pooling** 部分
+3. 选择 **Session** 模式（推荐）或 **Transaction** 模式
+4. 复制 **Connection string**（URI 格式）
+   - Session 模式：端口是 `6543`，主机名类似 `xxx.pooler.supabase.com`
+   - Transaction 模式：端口是 `5432`，主机名类似 `xxx.pooler.supabase.com`
+5. **保存这个连接字符串**，后续在 Render 中会用到
+
+**注意**：
+- Connection Pooling 的连接字符串格式：`postgresql://postgres.xxx:密码@xxx.pooler.supabase.com:6543/postgres`
+- 用户名包含项目引用（`postgres.xxx`）
+- 如果遇到 "network is unreachable" 错误，必须使用 Connection Pooling
 
 ---
 

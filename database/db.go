@@ -34,9 +34,20 @@ func InitDB(cfg *config.Config) error {
 		// 如果提供了完整的 DATABASE_URL，直接使用（Supabase 会提供）
 		if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
 			dsn = databaseURL
+			// 如果是 Supabase，确保使用 SSL 和正确的参数
+			if strings.Contains(databaseURL, "supabase.co") {
+				// 如果连接字符串中没有 sslmode 参数，添加它
+				if !strings.Contains(databaseURL, "sslmode=") {
+					if strings.Contains(databaseURL, "?") {
+						dsn = databaseURL + "&sslmode=require"
+					} else {
+						dsn = databaseURL + "?sslmode=require"
+					}
+				}
+			}
 		} else {
 			// 否则使用配置文件的参数构建
-			dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Shanghai",
+			dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=require TimeZone=Asia/Shanghai",
 				cfg.Database.Host,
 				cfg.Database.User,
 				cfg.Database.Password,
