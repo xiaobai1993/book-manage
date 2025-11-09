@@ -60,7 +60,7 @@ func (s *EmailService) SendCode(email, action string) (string, error) {
 	// 检查是否在1分钟内重复请求
 	key := fmt.Sprintf("%s:%s", email, action)
 	if existingCode, exists := s.codes[key]; exists {
-		if time.Since(existingCode.ExpiresAt.Add(-29 * time.Minute)) < time.Minute {
+		if time.Since(existingCode.ExpiresAt.Add(-29*time.Minute)) < time.Minute {
 			return "", fmt.Errorf("请求过于频繁，请稍后再试")
 		}
 	}
@@ -151,7 +151,7 @@ func (s *EmailService) sendEmail(toEmail, action, code string) error {
 	// 构建邮件内容
 	from := s.cfg.SMTPUser
 	to := []string{toEmail}
-	
+
 	// 构建邮件头
 	headers := make(map[string]string)
 	headers["From"] = from
@@ -196,14 +196,14 @@ func (s *EmailService) sendEmail(toEmail, action, code string) error {
 // sendEmailSSL 使用SSL发送邮件（465端口）
 func (s *EmailService) sendEmailSSL(host string, port int, username, password, from string, to []string, message string) error {
 	startTime := time.Now()
-	
+
 	// 连接到SMTP服务器（添加超时）
 	dialer := &tls.Dialer{
 		Config: &tls.Config{
 			ServerName: host,
 		},
 	}
-	
+
 	// 设置连接超时（30秒）
 	conn, err := dialer.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
