@@ -75,10 +75,11 @@ func (s *EmailService) SendCode(email, action string) (string, error) {
 
 	// 发送真实邮件
 	if s.cfg != nil && s.cfg.SMTPHost != "" && s.cfg.SMTPUser != "" {
+		fmt.Printf("[Email Service] 开始发送验证码到 %s (action: %s)\n", email, action)
 		err := s.sendEmail(email, action, code)
 		if err != nil {
 			// 如果发送失败，仍然保留验证码，但记录错误
-			fmt.Printf("[Email Service] 发送邮件失败: %v，验证码: %s\n", err, code)
+			fmt.Printf("[Email Service] 发送邮件失败: %v，验证码: %s (用户仍可使用此验证码)\n", err, code)
 			// 可以选择返回错误或继续（这里选择继续，至少验证码已生成）
 			// return "", fmt.Errorf("发送邮件失败: %v", err)
 		}
@@ -167,13 +168,21 @@ func (s *EmailService) sendEmail(toEmail, action, code string) error {
 	message += "\r\n" + htmlContent
 
 	// 发送邮件
+	sendStart := time.Now()
 	if port == 465 {
 		// 使用SSL连接（465端口）
+		fmt.Printf("[Email Service] 开始发送邮件 (SSL, 465端口) 到 %s\n", toEmail)
 		err = s.sendEmailSSL(s.cfg.SMTPHost, port, s.cfg.SMTPUser, s.cfg.SMTPPassword, from, to, message)
 	} else {
 		// 使用STARTTLS（587端口等）
+		fmt.Printf("[Email Service] 开始发送邮件 (STARTTLS, %d端口) 到 %s\n", port, toEmail)
 		auth := smtp.PlainAuth("", s.cfg.SMTPUser, s.cfg.SMTPPassword, s.cfg.SMTPHost)
 		err = smtp.SendMail(s.cfg.SMTPHost+":"+s.cfg.SMTPPort, auth, from, to, []byte(message))
+		if err != nil {
+			fmt.Printf("[Email Service] STARTTLS发送失败 (耗时: %v): %v\n", time.Since(sendStart), err)
+		} else {
+			fmt.Printf("[Email Service] STARTTLS发送成功 (耗时: %v)\n", time.Since(sendStart))
+		}
 	}
 
 	if err != nil {
@@ -186,57 +195,88 @@ func (s *EmailService) sendEmail(toEmail, action, code string) error {
 
 // sendEmailSSL 使用SSL发送邮件（465端口）
 func (s *EmailService) sendEmailSSL(host string, port int, username, password, from string, to []string, message string) error {
-	// 连接到SMTP服务器
-	conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%d", host, port), &tls.Config{
-		ServerName: host,
-	})
+	startTime := time.Now()
+	
+	// 连接到SMTP服务器（添加超时）
+	dialer := &tls.Dialer{
+		Config: &tls.Config{
+			ServerName: host,
+		},
+	}
+	
+	// 设置连接超时（30秒）
+	conn, err := dialer.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
-		return err
+		fmt.Printf("[Email Service] SSL连接失败 (耗时: %v): %v\n", time.Since(startTime), err)
+		return fmt.Errorf("连接SMTP服务器失败: %v", err)
 	}
 	defer conn.Close()
+	fmt.Printf("[Email Service] SSL连接成功 (耗时: %v)\n", time.Since(startTime))
 
 	// 创建SMTP客户端
 	client, err := smtp.NewClient(conn, host)
 	if err != nil {
-		return err
+		fmt.Printf("[Email Service] 创建SMTP客户端失败: %v\n", err)
+		return fmt.Errorf("创建SMTP客户端失败: %v", err)
 	}
 	defer client.Close()
 
 	// 认证
+	authStart := time.Now()
 	auth := smtp.PlainAuth("", username, password, host)
 	if err := client.Auth(auth); err != nil {
-		return err
+		fmt.Printf("[Email Service] SMTP认证失败 (耗时: %v): %v\n", time.Since(authStart), err)
+		return fmt.Errorf("SMTP认证失败: %v", err)
 	}
+	fmt.Printf("[Email Service] SMTP认证成功 (耗时: %v)\n", time.Since(authStart))
 
 	// 设置发件人
 	if err := client.Mail(from); err != nil {
-		return err
+		fmt.Printf("[Email Service] 设置发件人失败: %v\n", err)
+		return fmt.Errorf("设置发件人失败: %v", err)
 	}
 
 	// 设置收件人
 	for _, recipient := range to {
 		if err := client.Rcpt(recipient); err != nil {
-			return err
+			fmt.Printf("[Email Service] 设置收件人失败 (%s): %v\n", recipient, err)
+			return fmt.Errorf("设置收件人失败: %v", err)
 		}
 	}
 
 	// 发送邮件内容
+	dataStart := time.Now()
 	writer, err := client.Data()
 	if err != nil {
-		return err
+		fmt.Printf("[Email Service] 准备发送数据失败: %v\n", err)
+		return fmt.Errorf("准备发送数据失败: %v", err)
 	}
 
 	_, err = writer.Write([]byte(message))
 	if err != nil {
-		return err
+		writer.Close()
+		fmt.Printf("[Email Service] 写入邮件内容失败: %v\n", err)
+		return fmt.Errorf("写入邮件内容失败: %v", err)
 	}
 
 	err = writer.Close()
 	if err != nil {
-		return err
+		fmt.Printf("[Email Service] 关闭数据写入失败: %v\n", err)
+		return fmt.Errorf("关闭数据写入失败: %v", err)
+	}
+	fmt.Printf("[Email Service] 邮件内容发送成功 (耗时: %v)\n", time.Since(dataStart))
+
+	quitStart := time.Now()
+	err = client.Quit()
+	if err != nil {
+		fmt.Printf("[Email Service] 关闭连接失败: %v\n", err)
+		// Quit失败不影响邮件发送，只记录警告
+	} else {
+		fmt.Printf("[Email Service] 连接关闭成功 (耗时: %v)\n", time.Since(quitStart))
 	}
 
-	return client.Quit()
+	fmt.Printf("[Email Service] 邮件发送总耗时: %v\n", time.Since(startTime))
+	return nil
 }
 
 // VerifyCode 验证验证码

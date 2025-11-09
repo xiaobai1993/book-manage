@@ -2,10 +2,12 @@ package database
 
 import (
 	"book-manage/config"
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -61,7 +63,7 @@ func InitDB(cfg *config.Config) error {
 	case "mysql":
 		fallthrough
 	default:
-		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s&readTimeout=10s&writeTimeout=10s",
 			cfg.Database.User,
 			cfg.Database.Password,
 			cfg.Database.Host,
@@ -77,7 +79,26 @@ func InitDB(cfg *config.Config) error {
 		return fmt.Errorf("failed to connect database: %v", err)
 	}
 
+	// 配置连接池和超时设置
+	var sqlDB *sql.DB
+	sqlDB, err = DB.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get underlying sql.DB: %v", err)
+	}
+
+	// 设置连接池参数
+	sqlDB.SetMaxOpenConns(25)                 // 最大打开连接数
+	sqlDB.SetMaxIdleConns(10)                 // 最大空闲连接数
+	sqlDB.SetConnMaxLifetime(5 * time.Minute) // 连接最大生命周期
+	sqlDB.SetConnMaxIdleTime(10 * time.Minute) // 空闲连接最大存活时间
+
+	// 测试连接
+	if err := sqlDB.Ping(); err != nil {
+		return fmt.Errorf("failed to ping database: %v", err)
+	}
+
 	log.Printf("Database connection established successfully (type: %s)", dbType)
+	log.Printf("Connection pool: MaxOpen=%d, MaxIdle=%d", sqlDB.Stats().MaxOpenConnections, sqlDB.Stats().MaxIdleClosed)
 	return nil
 }
 

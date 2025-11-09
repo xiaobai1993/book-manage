@@ -5,6 +5,7 @@ import (
 	"book-manage/models"
 	"book-manage/services"
 	"book-manage/utils"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -56,6 +57,8 @@ type ProfileRequest struct {
 
 // Register 用户注册
 func Register(c *gin.Context) {
+	startTime := time.Now()
+	
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.Error(c, 10001, "参数错误")
@@ -91,17 +94,23 @@ func Register(c *gin.Context) {
 
 	// 检查邮箱是否已注册
 	var existingUser models.User
+	checkStart := time.Now()
 	if err := db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+		fmt.Printf("[Register] 邮箱检查耗时: %v\n", time.Since(checkStart))
 		utils.Error(c, 10003, "邮箱已被注册")
 		return
 	}
+	fmt.Printf("[Register] 邮箱检查耗时: %v\n", time.Since(checkStart))
 
 	// 加密密码
+	bcryptStart := time.Now()
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		fmt.Printf("[Register] 密码加密失败: %v\n", err)
 		utils.Error(c, 10001, "密码加密失败")
 		return
 	}
+	fmt.Printf("[Register] 密码加密耗时: %v\n", time.Since(bcryptStart))
 
 	// 创建用户（默认角色为user，可通过配置文件修改）
 	user := models.User{
@@ -112,10 +121,14 @@ func Register(c *gin.Context) {
 		Status:       "normal",
 	}
 
+	createStart := time.Now()
 	if err := db.Create(&user).Error; err != nil {
+		fmt.Printf("[Register] 创建用户失败: %v, 耗时: %v\n", err, time.Since(createStart))
 		utils.Error(c, 10001, "注册失败")
 		return
 	}
+	fmt.Printf("[Register] 创建用户耗时: %v\n", time.Since(createStart))
+	fmt.Printf("[Register] 总耗时: %v\n", time.Since(startTime))
 
 	utils.Success(c, map[string]interface{}{})
 }
@@ -233,12 +246,15 @@ func SendEmailCode(c *gin.Context) {
 	}
 
 	// 发送验证码
+	sendStart := time.Now()
 	emailService := services.GetEmailService()
 	_, err := emailService.SendCode(req.Email, req.Action)
 	if err != nil {
+		fmt.Printf("[SendEmailCode] 发送验证码失败 (耗时: %v): %v\n", time.Since(sendStart), err)
 		utils.Error(c, 10001, err.Error())
 		return
 	}
+	fmt.Printf("[SendEmailCode] 发送验证码成功 (耗时: %v)\n", time.Since(sendStart))
 
 	utils.Success(c, map[string]interface{}{})
 }
