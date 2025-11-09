@@ -33,11 +33,12 @@ func InitDB(cfg *config.Config) error {
 	switch dbType {
 	case "postgres", "postgresql":
 		// PostgreSQL 连接字符串格式
+		// 统一使用 URL 格式：postgresql://user:password@host:port/database?sslmode=xxx
 		// 如果提供了完整的 DATABASE_URL，直接使用（Supabase 会提供）
 		if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
 			dsn = databaseURL
 			// 如果是 Supabase，确保使用 SSL 和正确的参数
-			if strings.Contains(databaseURL, "supabase.co") {
+			if strings.Contains(databaseURL, "supabase.co") || strings.Contains(databaseURL, "pooler.supabase.com") {
 				// 如果连接字符串中没有 sslmode 参数，添加它
 				if !strings.Contains(databaseURL, "sslmode=") {
 					if strings.Contains(databaseURL, "?") {
@@ -65,22 +66,23 @@ func InitDB(cfg *config.Config) error {
 				}
 			}
 		} else {
-			// 否则使用配置文件的参数构建
+			// 否则使用配置文件的参数构建 URL 格式连接字符串
 			// 本地开发环境通常不需要SSL，生产环境（如Supabase）需要SSL
-			// 如果host包含supabase.co或不是localhost，则使用require，否则使用disable
 			sslmode := "disable"
-			if strings.Contains(cfg.Database.Host, "supabase.co") || 
-			   strings.Contains(cfg.Database.Host, "amazonaws.com") ||
-			   (cfg.Database.Host != "localhost" && cfg.Database.Host != "127.0.0.1") {
+			if strings.Contains(cfg.Database.Host, "supabase.co") ||
+				strings.Contains(cfg.Database.Host, "pooler.supabase.com") ||
+				strings.Contains(cfg.Database.Host, "amazonaws.com") ||
+				(cfg.Database.Host != "localhost" && cfg.Database.Host != "127.0.0.1") {
 				sslmode = "require"
 			}
+			// 统一使用 URL 格式构建连接字符串
 			// 添加 prefer_simple_protocol=1 来避免 prepared statement 冲突
-			dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=Asia/Shanghai prefer_simple_protocol=1",
-				cfg.Database.Host,
+			dsn = fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=%s&TimeZone=Asia/Shanghai&prefer_simple_protocol=1",
 				cfg.Database.User,
 				cfg.Database.Password,
-				cfg.Database.Database,
+				cfg.Database.Host,
 				cfg.Database.Port,
+				cfg.Database.Database,
 				sslmode,
 			)
 		}
@@ -114,9 +116,9 @@ func InitDB(cfg *config.Config) error {
 	}
 
 	// 设置连接池参数
-	sqlDB.SetMaxOpenConns(25)                 // 最大打开连接数
-	sqlDB.SetMaxIdleConns(10)                 // 最大空闲连接数
-	sqlDB.SetConnMaxLifetime(5 * time.Minute) // 连接最大生命周期
+	sqlDB.SetMaxOpenConns(25)                  // 最大打开连接数
+	sqlDB.SetMaxIdleConns(10)                  // 最大空闲连接数
+	sqlDB.SetConnMaxLifetime(5 * time.Minute)  // 连接最大生命周期
 	sqlDB.SetConnMaxIdleTime(10 * time.Minute) // 空闲连接最大存活时间
 
 	// 测试连接
