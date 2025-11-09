@@ -46,6 +46,23 @@ func InitDB(cfg *config.Config) error {
 						dsn = databaseURL + "?sslmode=require"
 					}
 				}
+				// 添加 prefer_simple_protocol=1 来避免 prepared statement 冲突
+				if !strings.Contains(dsn, "prefer_simple_protocol=") {
+					if strings.Contains(dsn, "?") {
+						dsn = dsn + "&prefer_simple_protocol=1"
+					} else {
+						dsn = dsn + "?prefer_simple_protocol=1"
+					}
+				}
+			} else {
+				// 非 Supabase 连接也添加 prefer_simple_protocol=1
+				if !strings.Contains(dsn, "prefer_simple_protocol=") {
+					if strings.Contains(dsn, "?") {
+						dsn = dsn + "&prefer_simple_protocol=1"
+					} else {
+						dsn = dsn + "?prefer_simple_protocol=1"
+					}
+				}
 			}
 		} else {
 			// 否则使用配置文件的参数构建
@@ -57,7 +74,8 @@ func InitDB(cfg *config.Config) error {
 			   (cfg.Database.Host != "localhost" && cfg.Database.Host != "127.0.0.1") {
 				sslmode = "require"
 			}
-			dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=Asia/Shanghai",
+			// 添加 prefer_simple_protocol=1 来避免 prepared statement 冲突
+			dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=Asia/Shanghai prefer_simple_protocol=1",
 				cfg.Database.Host,
 				cfg.Database.User,
 				cfg.Database.Password,
