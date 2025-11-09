@@ -249,14 +249,15 @@ func AllRecords(c *gin.Context) {
 	db := database.GetDB()
 
 	// 构建查询
+	// 注意：PostgreSQL中user是保留字，需要使用双引号
 	query := db.Table("borrow_record").
-		Select("borrow_record.id, borrow_record.user_id, user.email as user_email, borrow_record.book_id, book.title as book_title, borrow_record.borrow_date, borrow_record.due_date, borrow_record.return_date, borrow_record.status").
-		Joins("LEFT JOIN user ON borrow_record.user_id = user.id").
+		Select(`borrow_record.id, borrow_record.user_id, "user".email as user_email, borrow_record.book_id, book.title as book_title, borrow_record.borrow_date, borrow_record.due_date, borrow_record.return_date, borrow_record.status`).
+		Joins(`LEFT JOIN "user" ON borrow_record.user_id = "user".id`).
 		Joins("LEFT JOIN book ON borrow_record.book_id = book.id")
 
 	// 用户邮箱筛选
 	if req.UserEmail != "" {
-		query = query.Where("user.email LIKE ?", "%"+req.UserEmail+"%")
+		query = query.Where(`"user".email LIKE ?`, "%"+req.UserEmail+"%")
 	}
 
 	// 图书名称筛选
