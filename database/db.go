@@ -49,12 +49,21 @@ func InitDB(cfg *config.Config) error {
 			}
 		} else {
 			// 否则使用配置文件的参数构建
-			dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=require TimeZone=Asia/Shanghai",
+			// 本地开发环境通常不需要SSL，生产环境（如Supabase）需要SSL
+			// 如果host包含supabase.co或不是localhost，则使用require，否则使用disable
+			sslmode := "disable"
+			if strings.Contains(cfg.Database.Host, "supabase.co") || 
+			   strings.Contains(cfg.Database.Host, "amazonaws.com") ||
+			   (cfg.Database.Host != "localhost" && cfg.Database.Host != "127.0.0.1") {
+				sslmode = "require"
+			}
+			dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=Asia/Shanghai",
 				cfg.Database.Host,
 				cfg.Database.User,
 				cfg.Database.Password,
 				cfg.Database.Database,
 				cfg.Database.Port,
+				sslmode,
 			)
 		}
 		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
