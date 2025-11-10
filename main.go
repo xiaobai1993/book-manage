@@ -9,6 +9,8 @@ import (
 	"book-manage/utils"
 	"fmt"
 	"log"
+	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -122,7 +124,16 @@ func main() {
 	fmt.Printf("API文档请参考 API.md\n")
 	fmt.Printf("数据库连接: %s@%s:%s/%s\n", cfg.Database.User, cfg.Database.Host, cfg.Database.Port, cfg.Database.Database)
 
-	if err := r.Run(":" + port); err != nil {
+	// 创建HTTP服务器并配置超时时间（与前端一致：10秒）
+	srv := &http.Server{
+		Addr:         ":" + port,
+		Handler:      r,
+		ReadTimeout:  10 * time.Second,  // 读取超时：10秒
+		WriteTimeout: 10 * time.Second, // 写入超时：10秒
+		IdleTimeout:  120 * time.Second, // 空闲连接超时：2分钟
+	}
+
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
