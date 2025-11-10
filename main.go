@@ -34,6 +34,11 @@ func main() {
 	// 初始化邮件服务
 	services.InitEmailService(&cfg.Email)
 
+	// 初始化R2服务
+	if err := services.InitR2Service(&cfg.CloudflareR2); err != nil {
+		log.Printf("Warning: Failed to initialize R2 service: %v (图片上传功能将不可用)", err)
+	}
+
 	// 初始化中间件（传入配置）
 	middleware.InitMiddleware(cfg)
 
@@ -77,6 +82,8 @@ func main() {
 		bookAdminGroup.POST("/add", handlers.AddBook)
 		bookAdminGroup.POST("/edit", handlers.EditBook)
 		bookAdminGroup.POST("/delete", handlers.DeleteBook)
+		bookAdminGroup.POST("/uploadCover", handlers.UploadCover)
+		bookAdminGroup.POST("/deleteCover", handlers.DeleteCover)
 	}
 
 	// 借阅管理模块（需要登录）

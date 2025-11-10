@@ -30,12 +30,23 @@
 
       <div v-if="book" class="book-detail">
         <div class="book-main-info">
-          <h1 class="book-title">{{ book.title }}</h1>
-          <div class="book-meta">
-            <el-tag type="info">{{ book.category }}</el-tag>
-            <el-tag :type="book.available_quantity > 0 ? 'success' : 'danger'">
-              可借：{{ book.available_quantity }} / {{ book.total_quantity }}
-            </el-tag>
+          <div class="book-header">
+            <div class="book-cover">
+              <img v-if="book.cover_image_url" :src="book.cover_image_url" :alt="book.title" />
+              <div v-else class="cover-placeholder">
+                <el-icon><Picture /></el-icon>
+                <span>暂无封面</span>
+              </div>
+            </div>
+            <div class="book-info-content">
+              <h1 class="book-title">{{ book.title }}</h1>
+              <div class="book-meta">
+                <el-tag type="info">{{ book.category }}</el-tag>
+                <el-tag :type="book.available_quantity > 0 ? 'success' : 'danger'">
+                  可借：{{ book.available_quantity }} / {{ book.total_quantity }}
+                </el-tag>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -63,7 +74,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Edit, Reading } from '@element-plus/icons-vue'
+import { ArrowLeft, Edit, Reading, Picture } from '@element-plus/icons-vue'
 import { getBookDetail } from '@/api/book'
 import { borrowBook } from '@/api/borrow'
 
@@ -146,16 +157,61 @@ onMounted(() => {
   .book-main-info {
     margin-bottom: 30px;
 
-    .book-title {
-      font-size: 28px;
-      font-weight: bold;
-      margin-bottom: 15px;
-      color: #303133;
-    }
-
-    .book-meta {
+    .book-header {
       display: flex;
-      gap: 10px;
+      gap: 30px;
+      align-items: flex-start;
+
+      .book-cover {
+        flex-shrink: 0;
+        width: 200px;
+        aspect-ratio: 2 / 3; /* 书籍封面标准比例 2:3，高度自动计算 */
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        background-color: #f5f5f5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .cover-placeholder {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: #909399;
+          font-size: 14px;
+          width: 100%;
+          height: 100%;
+
+          .el-icon {
+            font-size: 64px;
+            margin-bottom: 12px;
+          }
+        }
+      }
+
+      .book-info-content {
+        flex: 1;
+
+        .book-title {
+          font-size: 28px;
+          font-weight: bold;
+          margin-bottom: 15px;
+          color: #303133;
+        }
+
+        .book-meta {
+          display: flex;
+          gap: 10px;
+        }
+      }
     }
   }
 
@@ -188,8 +244,19 @@ onMounted(() => {
     }
   }
 
-  .book-detail .book-main-info .book-title {
-    font-size: 22px;
+  .book-detail .book-main-info .book-header {
+    flex-direction: column;
+
+    .book-cover {
+      width: 100%;
+      max-width: 200px;
+      margin: 0 auto;
+      aspect-ratio: 2 / 3; /* 保持书籍封面比例 */
+    }
+
+    .book-info-content .book-title {
+      font-size: 22px;
+    }
   }
 }
 </style>

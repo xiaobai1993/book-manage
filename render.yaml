@@ -7,9 +7,8 @@ services:
     buildCommand: go mod download && go build -o book-manage
     startCommand: ./book-manage
     envVars:
-      # 数据库类型（PostgreSQL）
-      - key: DB_TYPE
-        value: postgres
+      # 数据库类型（仅支持 PostgreSQL）
+      # 注意：DB_TYPE 环境变量已不再使用，系统仅支持 PostgreSQL
       # 数据库连接（Supabase 会提供 DATABASE_URL）
       # 注意：如果 Supabase 提供了 DATABASE_URL，会自动使用，无需单独配置
       # 如果没有，可以手动配置以下变量：
@@ -45,4 +44,36 @@ services:
       # 管理员邮箱（用逗号分隔）
       # - key: ADMIN_EMAILS
       #   value: admin@lib.com,your-admin@example.com
+      
+      # Cloudflare R2 配置（图片存储）
+      # 注意：敏感信息（R2_SECRET_ACCESS_KEY）需要在 Render Dashboard 中手动设置
+      # 或使用 Secret Files 功能
+      # Account ID：从S3端点URL中提取，格式：https://{account-id}.r2.cloudflarestorage.com
+      - key: R2_ACCOUNT_ID
+        value: "your-r2-account-id"  # 请在 Render Dashboard 中设置实际值
+      
+      # S3 Access Key ID（从Cloudflare R2 API Token获取）
+      - key: R2_ACCESS_KEY_ID
+        value: "your-r2-access-key-id"  # 请在 Render Dashboard 中设置实际值
+      
+      # S3 Secret Access Key（从Cloudflare R2 API Token获取，敏感信息）
+      # 必须在 Render Dashboard 中手动设置，不要在此文件中填写
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false  # 设置为false，必须在Render Dashboard中手动设置
+      
+      # 存储桶名称
+      - key: R2_BUCKET_NAME
+        value: "your-bucket-name"  # 请在 Render Dashboard 中设置实际值
+      
+      # 公开访问URL（R2.dev子域名）
+      - key: R2_PUBLIC_URL
+        value: "https://your-public-url.r2.dev"  # 请在 Render Dashboard 中设置实际值
+      
+      # S3端点URL（完整URL）
+      - key: R2_ENDPOINT
+        value: "https://your-account-id.r2.cloudflarestorage.com"  # 请在 Render Dashboard 中设置实际值
+      
+      # 区域（默认auto，Cloudflare会自动选择最佳区域）
+      - key: R2_REGION
+        value: "auto"
 

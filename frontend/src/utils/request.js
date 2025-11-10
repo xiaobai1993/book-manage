@@ -33,8 +33,14 @@ service.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     
-    // 如果请求数据是对象，添加token到请求体（后端也支持从请求体读取token）
-    if (config.data && typeof config.data === 'object' && token) {
+    // 如果是 FormData（文件上传），不设置 Content-Type，让浏览器自动设置
+    if (config.data instanceof FormData) {
+      // FormData 会自动设置 Content-Type 为 multipart/form-data，并包含 boundary
+      // 不要手动设置，否则会丢失 boundary
+      delete config.headers['Content-Type']
+      // FormData 中已经包含了 token，不需要额外处理
+    } else if (config.data && typeof config.data === 'object' && token) {
+      // 普通对象请求，添加token到请求体
       config.data.token = token
     }
     

@@ -1,5 +1,4 @@
--- PostgreSQL 数据库迁移脚本
--- 从 MySQL 迁移到 PostgreSQL
+-- PostgreSQL 数据库初始化脚本
 
 -- 1. 用户表（存储用户信息）
 CREATE TABLE IF NOT EXISTS "user" (
@@ -114,7 +113,6 @@ CREATE TRIGGER update_book_updated_at BEFORE UPDATE ON "book"
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- 7. 插入用户数据（密码均为12345678，已用bcrypt加密）
--- 注意：实际密码哈希值需要从你的 MySQL 数据库中获取
 INSERT INTO "user" ("email", "password", "role") VALUES
 -- 管理员账户（email: admin@lib.com）
 ('admin@lib.com', '$2a$10$VJ8E3Q5Y6Z7W8X9C0V1B2A3D4F5G6H7J8K9L0M1N2O', 'admin'),
@@ -145,4 +143,18 @@ INSERT INTO "borrow_record" ("user_id", "book_id", "borrow_date", "due_date", "r
 -- 用户2借阅《追风筝的人》（未归还，导致该书库存为0）
 (3, 5, '2025-10-10 16:45:00', '2025-11-09 16:45:00', NULL, 'borrowed')
 ON CONFLICT DO NOTHING;
+
+-- 10. 添加图片功能相关字段（使用 ALTER 命令）
+-- 为 book 表添加 cover_image_url 字段
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'book' 
+        AND column_name = 'cover_image_url'
+    ) THEN
+        ALTER TABLE "book" ADD COLUMN "cover_image_url" VARCHAR(500) DEFAULT NULL;
+        COMMENT ON COLUMN "book"."cover_image_url" IS '图书封面图片URL（存储在Cloudflare R2）';
+    END IF;
+END $$;
 

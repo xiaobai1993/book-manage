@@ -155,7 +155,9 @@ make dev-frontend
 
 所有接口均采用 POST 方法，请求头设置为 `Content-Type: application/json`。
 
-详细的 API 文档请参考 `API.md` 文件。
+详细的 API 文档请参考：
+- **主 API 文档**：`API.md`（包含所有基础接口）
+- **图片功能 API**：`requirements/images/API_IMAGE.md`（图片上传、删除接口）
 
 ### 主要接口列表
 

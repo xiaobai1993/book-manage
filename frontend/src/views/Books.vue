@@ -56,6 +56,13 @@
           class="book-col"
         >
           <el-card class="book-card" shadow="hover" @click="handleBookClick(book.id)">
+            <div class="book-cover-wrapper" v-if="book.cover_image_url">
+              <img :src="book.cover_image_url" :alt="book.title" class="book-cover" />
+            </div>
+            <div class="book-cover-placeholder" v-else>
+              <el-icon><Picture /></el-icon>
+              <span>暂无封面</span>
+            </div>
             <div class="book-info">
               <h3 class="book-title">{{ book.title }}</h3>
               <p class="book-author">作者：{{ book.author }}</p>
@@ -117,7 +124,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Picture } from '@element-plus/icons-vue'
 import { searchBooks, deleteBook } from '@/api/book'
 import { borrowBook } from '@/api/borrow'
 
@@ -258,6 +265,43 @@ onMounted(() => {
 
   &:hover {
     transform: translateY(-5px);
+  }
+
+  .book-cover-wrapper {
+    width: 100%;
+    aspect-ratio: 2 / 3; /* 书籍封面标准比例 2:3 */
+    margin-bottom: 15px;
+    border-radius: 4px;
+    overflow: hidden;
+    background-color: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .book-cover {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .book-cover-placeholder {
+    width: 100%;
+    aspect-ratio: 2 / 3; /* 书籍封面标准比例 2:3 */
+    margin-bottom: 15px;
+    border-radius: 4px;
+    background-color: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #909399;
+    font-size: 14px;
+
+    .el-icon {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
   }
 
   .book-info {

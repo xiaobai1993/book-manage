@@ -4,7 +4,10 @@
 - **API版本**：v1.0
 - **文档版本**：v1.0
 - **创建日期**：2025年11月8日
-- **最后更新**：2025年11月9日
+- **最后更新**：2025年1月
+- **相关文档**：
+  - 图片功能 API：`requirements/images/API_IMAGE.md`
+  - 图片功能 PRD：`requirements/images/图书图片功能PRD.md`
 
 ## 2. 通用规范
 
@@ -53,6 +56,7 @@
 | total_quantity | int | 总数量 |
 | available_quantity | int | 可借数量 |
 | description | string | 图书描述 |
+| cover_image_url | string | 封面图片URL（可为空） |
 | create_time | string | 添加时间 |
 | update_time | string | 更新时间 |
 
@@ -106,6 +110,10 @@
 | 10018 | 总数量不能小于已借出数量 | 更新图书数量时不符合业务规则 |
 | 10019 | 搜索关键词过短 | 关键词搜索时关键词长度不足 |
 | 10020 | 搜索无结果 | 关键词搜索时未找到匹配结果 |
+| 10021 | 图片格式不支持 | 上传的图片格式不在允许范围内 |
+| 10022 | 图片大小超限 | 上传的图片大小超过限制（5MB） |
+| 10023 | 图片上传失败 | 图片上传到存储服务失败 |
+| 10024 | 图片不存在 | 要删除的图片不存在 |
 
 ## 3. 用户管理模块
 
@@ -552,6 +560,7 @@ POST /api/book/detail
       "total_quantity": 5,
       "available_quantity": 5,
       "description": "地球文明向宇宙发出了神秘信号...",
+      "cover_image_url": "https://your-r2-bucket.r2.cloudflarestorage.com/book-covers/1_a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg",
       "create_time": "2025-11-08 10:00:00",
       "update_time": "2025-11-08 10:00:00"
     }
@@ -608,6 +617,7 @@ POST /api/book/search
         "total_quantity": 5,
         "available_quantity": 5,
         "description": "地球文明向宇宙发出了神秘信号...",
+        "cover_image_url": "https://your-r2-bucket.r2.cloudflarestorage.com/book-covers/1_a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg",
         "create_time": "2025-11-08 10:00:00"
       }
     ],

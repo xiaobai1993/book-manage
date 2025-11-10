@@ -3,7 +3,11 @@ package handlers
 import (
 	"book-manage/database"
 	"book-manage/models"
+	"book-manage/services"
 	"book-manage/utils"
+	"io"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -212,7 +216,7 @@ func BookDetail(c *gin.Context) {
 		return
 	}
 
-	utils.Success(c, map[string]interface{}{
+		utils.Success(c, map[string]interface{}{
 		"book": map[string]interface{}{
 			"id":                book.ID,
 			"title":             book.Title,
@@ -222,6 +226,7 @@ func BookDetail(c *gin.Context) {
 			"total_quantity":    book.TotalQuantity,
 			"available_quantity": book.AvailableQuantity,
 			"description":       book.Description,
+			"cover_image_url":   book.CoverImageURL,
 			"create_time":       book.CreateTime.Format("2006-01-02 15:04:05"),
 			"update_time":       book.UpdateTime.Format("2006-01-02 15:04:05"),
 		},
@@ -296,6 +301,7 @@ func BookSearch(c *gin.Context) {
 			"total_quantity":    book.TotalQuantity,
 			"available_quantity": book.AvailableQuantity,
 			"description":       book.Description,
+			"cover_image_url":   book.CoverImageURL,
 			"create_time":       book.CreateTime.Format("2006-01-02 15:04:05"),
 		}
 	}
@@ -306,4 +312,164 @@ func BookSearch(c *gin.Context) {
 		"page":  req.Page,
 		"limit": req.Limit,
 	})
+}
+
+// UploadCoverRequest 上传封面请求
+type UploadCoverRequest struct {
+	BookID int `form:"book_id" binding:"required"`
+}
+
+// UploadCover 上传图书封面
+func UploadCover(c *gin.Context) {
+	var req UploadCoverRequest
+	if err := c.ShouldBind(&req); err != nil {
+		utils.Error(c, 10001, "参数错误")
+		return
+	}
+
+	// 获取上传的文件
+	file, err := c.FormFile("image")
+	if err != nil {
+		utils.Error(c, 10001, "请选择图片文件")
+		return
+	}
+
+	// 验证文件格式
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	allowedExts := []string{".jpg", ".jpeg", ".png", ".webp", ".gif"}
+	if !contains(allowedExts, ext) {
+		utils.Error(c, 10021, "图片格式不支持，仅支持 JPG、PNG、WebP、GIF 格式")
+		return
+	}
+
+	// 验证文件大小（5MB）
+	if file.Size > 5*1024*1024 {
+		utils.Error(c, 10022, "图片大小不能超过 5MB")
+		return
+	}
+
+	// 打开文件
+	src, err := file.Open()
+	if err != nil {
+		utils.Error(c, 10001, "无法读取图片文件")
+		return
+	}
+	defer src.Close()
+
+	// 读取文件内容
+	imageData, err := io.ReadAll(src)
+	if err != nil {
+		utils.Error(c, 10001, "无法读取图片文件")
+		return
+	}
+
+	// 检查图书是否存在
+	db := database.GetDB()
+	var book models.Book
+	if err := db.First(&book, req.BookID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			utils.Error(c, 10010, "图书不存在")
+		} else {
+			utils.Error(c, 10001, "查询图书失败")
+		}
+		return
+	}
+
+	// 检查R2服务是否可用
+	r2Service := services.GetR2Service()
+	if !r2Service.IsEnabled() {
+		utils.Error(c, 10023, "图片存储服务未配置")
+		return
+	}
+
+	// 如果已有图片，先删除旧图片
+	if book.CoverImageURL != "" {
+		if err := r2Service.DeleteImage(book.CoverImageURL); err != nil {
+			// 记录错误但不阻止上传新图片
+			// log.Printf("Failed to delete old image: %v", err)
+		}
+	}
+
+	// 上传到R2
+	imageURL, err := r2Service.UploadImage(req.BookID, imageData, file.Filename)
+	if err != nil {
+		utils.Error(c, 10023, "图片上传失败")
+		return
+	}
+
+	// 更新数据库
+	book.CoverImageURL = imageURL
+	book.UpdateTime = time.Now()
+	if err := db.Save(&book).Error; err != nil {
+		utils.Error(c, 10001, "更新图书记录失败")
+		return
+	}
+
+	utils.Success(c, map[string]interface{}{
+		"image_url": imageURL,
+		"book_id":   req.BookID,
+	})
+}
+
+// DeleteCoverRequest 删除封面请求
+type DeleteCoverRequest struct {
+	BookID int `json:"book_id" binding:"required"`
+}
+
+// DeleteCover 删除图书封面
+func DeleteCover(c *gin.Context) {
+	var req DeleteCoverRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.Error(c, 10001, "参数错误")
+		return
+	}
+
+	db := database.GetDB()
+
+	// 查找图书
+	var book models.Book
+	if err := db.First(&book, req.BookID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			utils.Error(c, 10010, "图书不存在")
+		} else {
+			utils.Error(c, 10001, "查询图书失败")
+		}
+		return
+	}
+
+	// 检查是否有图片
+	if book.CoverImageURL == "" {
+		utils.Error(c, 10024, "该图书没有封面图片")
+		return
+	}
+
+	// 检查R2服务是否可用
+	r2Service := services.GetR2Service()
+	if r2Service.IsEnabled() {
+		// 从R2删除图片
+		if err := r2Service.DeleteImage(book.CoverImageURL); err != nil {
+			// 记录错误但不阻止删除数据库记录
+			// log.Printf("Failed to delete image from R2: %v", err)
+		}
+	}
+
+	// 清空数据库记录
+	book.CoverImageURL = ""
+	book.UpdateTime = time.Now()
+	if err := db.Save(&book).Error; err != nil {
+		utils.Error(c, 10001, "更新图书记录失败")
+		return
+	}
+
+	utils.Success(c, map[string]interface{}{})
+}
+
+// contains 检查字符串是否在切片中
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }

@@ -23,7 +23,7 @@
 - [ ] 注册 Render 账号
 - [ ] 连接 GitHub 仓库
 - [ ] 准备环境变量：
-  - [ ] `DB_TYPE=postgres`
+  - [ ] 数据库配置（仅支持 PostgreSQL，DB_TYPE 已不再使用）
   - [ ] `DATABASE_URL`（从 Supabase 获取）
   - [ ] `JWT_SECRET`（生成强随机字符串）
   - [ ] `ADMIN_EMAILS`（管理员邮箱）

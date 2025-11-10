@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -19,36 +18,52 @@ import (
 var DB *gorm.DB
 
 // InitDB 初始化数据库连接
-// 支持 MySQL 和 PostgreSQL
-// 通过环境变量 DB_TYPE 指定数据库类型，默认为 postgres
+// 仅支持 PostgreSQL
 func InitDB(cfg *config.Config) error {
-	dbType := os.Getenv("DB_TYPE")
-	if dbType == "" {
-		dbType = "postgres" // 默认使用 PostgreSQL
-	}
-	dbType = strings.ToLower(dbType)
-
 	var err error
 	var dsn string
 
-	switch dbType {
-	case "postgres", "postgresql":
+	// 仅支持 PostgreSQL
+	{
 		// PostgreSQL 连接字符串格式
 		// 统一使用 URL 格式：postgresql://user:password@host:port/database?sslmode=xxx
 		// 如果提供了完整的 DATABASE_URL，直接使用（Supabase 会提供）
 		if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
 			dsn = databaseURL
+			// 如果是 Supabase 连接池（pooler），尝试转换为直接连接以避免 prepared statement 冲突
+			// 连接池的端口是 6543，直接连接的端口是 5432
+			// 如果使用连接池遇到 prepared statement 问题，可以设置 USE_DIRECT_CONNECTION=true 环境变量
+			useDirectConnection := os.Getenv("USE_DIRECT_CONNECTION") == "true"
+			if (strings.Contains(databaseURL, "pooler.supabase.com") ||
+				(strings.Contains(databaseURL, "supabase.co") && strings.Contains(databaseURL, ":6543"))) && useDirectConnection {
+				// 转换为直接连接：将 pooler.supabase.com 替换为 db.xxx.supabase.co，端口从 6543 改为 5432
+				dsn = strings.ReplaceAll(dsn, "pooler.supabase.com", "db."+strings.Split(strings.Split(dsn, "@")[1], ".")[0]+".supabase.co")
+				dsn = strings.ReplaceAll(dsn, ":6543", ":5432")
+				// 移除用户名中的项目引用（pooler 使用 postgres.xxx，直接连接使用 postgres）
+				if strings.Contains(dsn, "postgres.") {
+					parts := strings.Split(dsn, "@")
+					if len(parts) > 0 {
+						userPart := strings.Split(parts[0], "://")[1]
+						if strings.Contains(userPart, "postgres.") {
+							userPart = strings.ReplaceAll(userPart, "postgres.", "postgres")
+							dsn = strings.Split(dsn, "://")[0] + "://" + userPart + "@" + strings.Join(parts[1:], "@")
+						}
+					}
+				}
+			}
 			// 如果是 Supabase，确保使用 SSL 和正确的参数
-			if strings.Contains(databaseURL, "supabase.co") || strings.Contains(databaseURL, "pooler.supabase.com") {
+			if strings.Contains(dsn, "supabase.co") || strings.Contains(dsn, "pooler.supabase.com") {
 				// 如果连接字符串中没有 sslmode 参数，添加它
-				if !strings.Contains(databaseURL, "sslmode=") {
-					if strings.Contains(databaseURL, "?") {
-						dsn = databaseURL + "&sslmode=require"
+				if !strings.Contains(dsn, "sslmode=") {
+					if strings.Contains(dsn, "?") {
+						dsn = dsn + "&sslmode=require"
 					} else {
-						dsn = databaseURL + "?sslmode=require"
+						dsn = dsn + "?sslmode=require"
 					}
 				}
 				// 添加 prefer_simple_protocol=1 来避免 prepared statement 冲突
+				// 注意：Supabase 的连接池可能不支持此参数，但 PostgreSQL 14+ 支持
+				// 如果连接池不支持，可能需要使用直接连接而不是连接池（设置 USE_DIRECT_CONNECTION=true）
 				if !strings.Contains(dsn, "prefer_simple_protocol=") {
 					if strings.Contains(dsn, "?") {
 						dsn = dsn + "&prefer_simple_protocol=1"
@@ -105,22 +120,18 @@ func InitDB(cfg *config.Config) error {
 		}
 		// 禁用 prepared statement 以避免 "prepared statement already exists" 错误
 		// 这在连接池环境中特别重要，因为连接会被重用
-		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-			Logger:      logger.Default.LogMode(logger.Info),
-			PrepareStmt: false, // 禁用 prepared statement，避免缓存冲突
+		// 根据 https://github.com/jackc/pgx/issues/1847，这是 pgx 驱动的已知问题
+		// 解决方案：使用 postgres.Config 来配置 pgx 驱动，禁用 statement cache
+		// PreferSimpleProtocol: true 会强制使用简单协议，完全避免 prepared statement
+		postgresConfig := postgres.New(postgres.Config{
+			DSN:                  dsn,
+			PreferSimpleProtocol: true, // 使用简单协议，完全避免 prepared statement
+			WithoutReturning:     false,
 		})
-	case "mysql":
-		fallthrough
-	default:
-		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s&readTimeout=10s&writeTimeout=10s",
-			cfg.Database.User,
-			cfg.Database.Password,
-			cfg.Database.Host,
-			cfg.Database.Port,
-			cfg.Database.Database,
-		)
-		DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Info),
+
+		DB, err = gorm.Open(postgresConfig, &gorm.Config{
+			Logger:      logger.Default.LogMode(logger.Info),
+			PrepareStmt: false, // 禁用 GORM 层面的 prepared statement，避免缓存冲突
 		})
 	}
 
@@ -136,10 +147,12 @@ func InitDB(cfg *config.Config) error {
 	}
 
 	// 设置连接池参数
-	sqlDB.SetMaxOpenConns(25)                  // 最大打开连接数
-	sqlDB.SetMaxIdleConns(10)                  // 最大空闲连接数
-	sqlDB.SetConnMaxLifetime(5 * time.Minute)  // 连接最大生命周期
-	sqlDB.SetConnMaxIdleTime(10 * time.Minute) // 空闲连接最大存活时间
+	// 注意：为了彻底避免 prepared statement 冲突，缩短连接生命周期
+	// 这样连接会被更频繁地回收，减少连接重用导致的 prepared statement 冲突
+	sqlDB.SetMaxOpenConns(25)                 // 最大打开连接数
+	sqlDB.SetMaxIdleConns(5)                  // 最大空闲连接数（减少以降低连接重用）
+	sqlDB.SetConnMaxLifetime(2 * time.Minute) // 连接最大生命周期（缩短以减少重用）
+	sqlDB.SetConnMaxIdleTime(1 * time.Minute) // 空闲连接最大存活时间（缩短）
 
 	// 测试连接
 	if err := sqlDB.Ping(); err != nil {
@@ -152,7 +165,7 @@ func InitDB(cfg *config.Config) error {
 		// 不阻止启动，因为可能已经手动创建了表
 	}
 
-	log.Printf("Database connection established successfully (type: %s)", dbType)
+	log.Printf("Database connection established successfully (PostgreSQL)")
 	log.Printf("Connection pool: MaxOpen=%d, MaxIdle=%d", sqlDB.Stats().MaxOpenConnections, sqlDB.Stats().MaxIdleClosed)
 	return nil
 }

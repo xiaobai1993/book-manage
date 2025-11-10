@@ -44,7 +44,7 @@ postgresql://postgres.xxx:密码@xxx.pooler.supabase.com:6543/postgres?sslmode=r
 在 Render Dashboard 中，检查以下环境变量：
 
 - `DATABASE_URL` - 应该是完整的连接字符串
-- `DB_TYPE` - 应该是 `postgres`
+- 数据库类型 - 仅支持 PostgreSQL（DB_TYPE 环境变量已不再使用）
 
 ### 3. 测试数据库连接
 

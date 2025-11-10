@@ -17,7 +17,7 @@
    - **Start**: `./book-manage`
 4. 添加环境变量：
    ```
-   DB_TYPE=postgres
+   # 注意：DB_TYPE 已不再使用，系统仅支持 PostgreSQL
    DATABASE_URL=你的 Supabase 连接字符串
    JWT_SECRET=随机生成的密钥
    ```

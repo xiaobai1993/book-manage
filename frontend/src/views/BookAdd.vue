@@ -47,6 +47,24 @@
             placeholder="请输入图书描述"
           />
         </el-form-item>
+        <el-form-item label="封面图片">
+          <div v-if="!bookId" class="upload-hint">
+            <el-alert
+              type="info"
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                <span>请先添加图书，然后可以上传封面图片</span>
+              </template>
+            </el-alert>
+          </div>
+          <ImageUpload
+            v-else
+            :book-id="bookId"
+            @uploaded="handleImageUploaded"
+          />
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="loading" @click="handleSubmit">提交</el-button>
           <el-button @click="$router.back()">取消</el-button>
@@ -63,12 +81,14 @@ import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { addBook } from '@/api/book'
+import ImageUpload from '@/components/ImageUpload.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const formRef = ref()
 const loading = ref(false)
+const bookId = ref(null)
 
 const form = reactive({
   title: '',
@@ -94,12 +114,20 @@ const handleSubmit = async () => {
     if (valid) {
       loading.value = true
       try {
-        await addBook({
+        const res = await addBook({
           token: userStore.token,
           ...form
         })
-        ElMessage.success('添加成功')
-        router.push({ name: 'Books' })
+        // 保存图书ID，用于后续上传图片
+        if (res.data && res.data.id) {
+          bookId.value = res.data.id
+          ElMessage.success('添加成功，现在可以上传封面图片')
+          // 不立即跳转，让用户有机会上传图片
+          // 用户可以手动点击返回按钮
+        } else {
+          ElMessage.success('添加成功')
+          router.push({ name: 'Books' })
+        }
       } catch (error) {
         console.error('添加失败:', error)
       } finally {
@@ -107,6 +135,10 @@ const handleSubmit = async () => {
       }
     }
   })
+}
+
+const handleImageUploaded = (imageUrl) => {
+  ElMessage.success('封面图片上传成功')
 }
 </script>
 

@@ -14,6 +14,7 @@ type Book struct {
 	TotalQuantity    int       `gorm:"not null" json:"total_quantity"`
 	AvailableQuantity int      `gorm:"not null" json:"available_quantity"`
 	Description      string    `gorm:"type:text" json:"description"`
+	CoverImageURL    string    `gorm:"type:varchar(500);default:null" json:"cover_image_url"`
 	CreateTime       time.Time `gorm:"column:create_time;default:CURRENT_TIMESTAMP" json:"create_time"`
 	UpdateTime       time.Time `gorm:"column:update_time;default:CURRENT_TIMESTAMP" json:"update_time"`
 }

@@ -48,6 +48,26 @@
             placeholder="请输入图书描述"
           />
         </el-form-item>
+        <el-form-item label="封面图片">
+          <div v-if="form.id === 0" class="upload-hint">
+            <el-alert
+              type="info"
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                <span>正在加载图书信息...</span>
+              </template>
+            </el-alert>
+          </div>
+          <ImageUpload
+            v-else
+            :book-id="form.id"
+            :current-image-url="form.cover_image_url"
+            @uploaded="handleImageUploaded"
+            @removed="handleImageRemoved"
+          />
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="submitting" @click="handleSubmit">提交</el-button>
           <el-button @click="$router.back()">取消</el-button>
@@ -63,7 +83,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
-import { getBookDetail, editBook } from '@/api/book'
+import { getBookDetail, editBook, deleteCover } from '@/api/book'
+import ImageUpload from '@/components/ImageUpload.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -80,7 +101,8 @@ const form = reactive({
   isbn: '',
   category: '',
   total_quantity: 1,
-  description: ''
+  description: '',
+  cover_image_url: ''
 })
 
 const rules = {
@@ -114,6 +136,7 @@ const loadBookDetail = async () => {
     form.category = book.category
     form.total_quantity = book.total_quantity
     form.description = book.description || ''
+    form.cover_image_url = book.cover_image_url || ''
   } catch (error) {
     console.error('加载图书详情失败:', error)
   } finally {
@@ -141,6 +164,24 @@ const handleSubmit = async () => {
       }
     }
   })
+}
+
+const handleImageUploaded = (imageUrl) => {
+  form.cover_image_url = imageUrl
+  ElMessage.success('封面图片上传成功')
+}
+
+const handleImageRemoved = async () => {
+  try {
+    await deleteCover({
+      token: userStore.token,
+      book_id: form.id
+    })
+    form.cover_image_url = ''
+    ElMessage.success('封面图片已删除')
+  } catch (error) {
+    console.error('删除封面失败:', error)
+  }
 }
 
 onMounted(() => {

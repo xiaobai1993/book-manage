@@ -1,20 +1,20 @@
-# 本地 PostgreSQL 测试指南
+# 本地 PostgreSQL 设置指南
 
 ## 📌 重要说明
 
-**你不需要在本地切换到 PostgreSQL！**
+**系统仅支持 PostgreSQL 数据库**
 
-- ✅ 本地开发可以继续使用 MySQL（默认配置）
-- ✅ 部署到生产环境时会自动使用 PostgreSQL（通过环境变量）
-- ✅ 代码已经同时支持两种数据库，无需修改
+- ✅ 本地开发需要使用 PostgreSQL
+- ✅ 生产环境使用 PostgreSQL（Supabase）
+- ✅ 代码仅支持 PostgreSQL，不再支持 MySQL
 
 ---
 
-## 🤔 为什么不需要切换？
+## 📝 数据库要求
 
-1. **代码已支持双数据库**：通过 `DB_TYPE` 环境变量自动切换
-2. **本地开发环境**：继续使用 MySQL，配置简单，无需改动
-3. **生产环境**：Render 会自动设置 `DB_TYPE=postgres`，使用 Supabase PostgreSQL
+1. **仅支持 PostgreSQL**：系统已移除 MySQL 支持
+2. **本地开发环境**：需要安装并配置 PostgreSQL
+3. **生产环境**：使用 Supabase PostgreSQL
 
 ---
 
@@ -79,8 +79,7 @@ export DATABASE_URL=postgresql://postgres:123456@localhost:5432/library_manageme
 ### 5. 运行后端
 
 ```bash
-# 确保设置了 DB_TYPE=postgres
-export DB_TYPE=postgres
+# 注意：DB_TYPE 环境变量已不再使用，系统仅支持 PostgreSQL
 go run main.go
 ```
 

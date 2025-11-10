@@ -44,3 +44,22 @@ export function searchBooks(data) {
     data
   })
 }
+
+// 上传图书封面（管理员）
+export function uploadCover(formData) {
+  return request({
+    url: '/book/uploadCover',
+    method: 'post',
+    data: formData
+    // 注意：不要设置 Content-Type，让浏览器自动设置 multipart/form-data
+  })
+}
+
+// 删除图书封面（管理员）
+export function deleteCover(data) {
+  return request({
+    url: '/book/deleteCover',
+    method: 'post',
+    data
+  })
+}

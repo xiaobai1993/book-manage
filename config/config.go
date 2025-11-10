@@ -10,11 +10,12 @@ import (
 
 // Config 应用配置
 type Config struct {
-	Database   DatabaseConfig `yaml:"database"`
-	Server     ServerConfig   `yaml:"server"`
-	JWT        JWTConfig      `yaml:"jwt"`
-	Email      EmailConfig    `yaml:"email"`
-	AdminEmails []string      `yaml:"admin_emails"`
+	Database   DatabaseConfig   `yaml:"database"`
+	Server     ServerConfig     `yaml:"server"`
+	JWT        JWTConfig        `yaml:"jwt"`
+	Email      EmailConfig      `yaml:"email"`
+	AdminEmails []string        `yaml:"admin_emails"`
+	CloudflareR2 CloudflareR2Config `yaml:"cloudflare_r2"`
 }
 
 // DatabaseConfig 数据库配置
@@ -42,6 +43,17 @@ type EmailConfig struct {
 	SMTPPort     string `yaml:"smtp_port"`
 	SMTPUser     string `yaml:"smtp_user"`
 	SMTPPassword string `yaml:"smtp_password"`
+}
+
+// CloudflareR2Config R2配置（使用S3兼容API）
+type CloudflareR2Config struct {
+	AccountID       string `yaml:"account_id"`        // 从S3端点URL提取，格式：https://{account-id}.r2.cloudflarestorage.com
+	AccessKeyID     string `yaml:"access_key_id"`     // S3 Access Key ID
+	SecretAccessKey string `yaml:"secret_access_key"` // S3 Secret Access Key
+	BucketName      string `yaml:"bucket_name"`      // 存储桶名称，如：my-object-bucket
+	PublicURL       string `yaml:"public_url"`        // 公开访问URL，如：https://pub-xxxxx.r2.dev
+	Endpoint        string `yaml:"endpoint"`          // S3端点URL，如：https://{account-id}.r2.cloudflarestorage.com
+	Region          string `yaml:"region"`             // 区域，默认：auto
 }
 
 // LoadConfig 加载配置
@@ -134,6 +146,31 @@ func LoadConfig() (*Config, error) {
 		for i, email := range config.AdminEmails {
 			config.AdminEmails[i] = strings.TrimSpace(email)
 		}
+	}
+
+	// Cloudflare R2 配置（从环境变量读取）
+	if accountID := os.Getenv("R2_ACCOUNT_ID"); accountID != "" {
+		config.CloudflareR2.AccountID = accountID
+	}
+	if accessKeyID := os.Getenv("R2_ACCESS_KEY_ID"); accessKeyID != "" {
+		config.CloudflareR2.AccessKeyID = accessKeyID
+	}
+	if secretAccessKey := os.Getenv("R2_SECRET_ACCESS_KEY"); secretAccessKey != "" {
+		config.CloudflareR2.SecretAccessKey = secretAccessKey
+	}
+	if bucketName := os.Getenv("R2_BUCKET_NAME"); bucketName != "" {
+		config.CloudflareR2.BucketName = bucketName
+	}
+	if publicURL := os.Getenv("R2_PUBLIC_URL"); publicURL != "" {
+		config.CloudflareR2.PublicURL = publicURL
+	}
+	if endpoint := os.Getenv("R2_ENDPOINT"); endpoint != "" {
+		config.CloudflareR2.Endpoint = endpoint
+	}
+	if region := os.Getenv("R2_REGION"); region != "" {
+		config.CloudflareR2.Region = region
+	} else if config.CloudflareR2.Region == "" {
+		config.CloudflareR2.Region = "auto" // 默认值
 	}
 
 	return &config, nil

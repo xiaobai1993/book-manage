@@ -30,9 +30,9 @@ go run main.go
 ```yaml
 database:
   host: "localhost"
-  port: "3306"
-  user: "root"
-  password: "123456"
+  port: "5432"
+  user: "postgres"
+  password: "postgres"
   database: "library_management"
 
 server:

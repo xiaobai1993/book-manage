@@ -45,3 +45,11 @@ frontend/package-lock.json
 
 # Temporary documentation
 如何查看验证码.md
+
+# Render 配置和敏感信息文件
+render_secret_file*.txt
+render_secret_file*.env
+render_secret_file*.md
+set_render_env.sh
+render_env_commands.txt
+setup_render_env.md
