@@ -92,14 +92,17 @@
 | `JWT_SECRET` | `生成一个随机字符串` | 用于 JWT 加密（可以使用在线工具生成） |
 | `PORT` | `8080` | 服务器端口（Render 会自动设置，但可以显式指定） |
 | `ADMIN_EMAILS` | `admin@lib.com` | 管理员邮箱（多个用逗号分隔） |
-| `SMTP_HOST` | `smtp.qq.com` | 邮箱 SMTP 主机（可选） |
-| `SMTP_PORT` | `465` | 邮箱 SMTP 端口（可选） |
-| `SMTP_USER` | `你的邮箱` | 邮箱用户名（可选） |
-| `SMTP_PASSWORD` | `你的邮箱密码` | 邮箱密码（可选） |
+| `SMTP_PASSWORD` | `re_xxxxx` | Resend API Key（用于发送邮件） |
+| `SMTP_USER` | `noreply@yourdomain.com` | 发件人邮箱（需要在 Resend 中验证域名） |
 
 **重要提示**：
 - `DATABASE_URL` 应该包含密码，格式：`postgresql://postgres:YOUR_PASSWORD@db.xxx.supabase.co:5432/postgres`
 - `JWT_SECRET` 建议使用强随机字符串，可以使用：`openssl rand -base64 32` 生成
+- **邮件发送使用 Resend 服务**：
+  - 注册并获取 API Key：访问 https://resend.com/api-keys
+  - 验证发件域名：访问 https://resend.com/domains（添加你的域名并配置 DNS 记录）
+  - 将 Resend API Key 设置为 `SMTP_PASSWORD` 环境变量
+  - 将发件邮箱设置为 `SMTP_USER` 环境变量（如：noreply@yourdomain.com）
 
 ### 2.4 部署
 
@@ -234,10 +237,8 @@ DATABASE_URL=postgresql://postgres:password@db.xxx.supabase.co:5432/postgres
 JWT_SECRET=your-jwt-secret-key
 PORT=8080
 ADMIN_EMAILS=admin@lib.com
-SMTP_HOST=smtp.qq.com
-SMTP_PORT=465
-SMTP_USER=your-email@qq.com
-SMTP_PASSWORD=your-email-password
+SMTP_PASSWORD=re_xxxxx  # Resend API Key
+SMTP_USER=noreply@yourdomain.com  # 发件邮箱（需在 Resend 验证域名）
 ```
 
 ### 前端环境变量（Vercel）
@@ -252,9 +253,10 @@ VITE_API_BASE_URL=https://your-backend-url.onrender.com/api
 
 1. **JWT_SECRET**：使用强随机字符串，不要使用默认值
 2. **数据库密码**：使用强密码，定期更换
-3. **邮箱密码**：如果使用 QQ 邮箱，建议使用授权码而非登录密码
+3. **Resend API Key**：妥善保管 API Key，不要泄露到公开仓库
 4. **环境变量**：不要在代码中硬编码敏感信息
 5. **HTTPS**：Vercel 和 Render 都自动提供 HTTPS
+6. **域名验证**：在使用 Resend 发送邮件前，务必在 Resend 控制台验证你的发件域名
 
 ---
 

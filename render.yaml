@@ -31,15 +31,14 @@ services:
       - key: JWT_SECRET
         generateValue: true
       
-      # 邮箱配置（可选）
-      # - key: SMTP_HOST
-      #   value: smtp.qq.com
-      # - key: SMTP_PORT
-      #   value: "465"
-      # - key: SMTP_USER
-      #   value: your-email@qq.com
-      # - key: SMTP_PASSWORD
-      #   value: your-email-password
+      # 邮箱配置（使用 Resend 发送邮件）
+      # ⚠️ 重要：请在 Render Dashboard 中手动设置以下环境变量
+      # SMTP_PASSWORD 现在存储 Resend API Key（格式：re_xxxxx）
+      # 获取 API Key：https://resend.com/api-keys
+      - key: SMTP_PASSWORD
+        sync: false  # 必须在 Render Dashboard 中手动设置 Resend API Key
+      - key: SMTP_USER
+        value: "noreply@ai-speed.xyz"  # 发件人邮箱（需要在 Resend 中验证域名 ai-speed.xyz）
       
       # 管理员邮箱（用逗号分隔）
       # - key: ADMIN_EMAILS
